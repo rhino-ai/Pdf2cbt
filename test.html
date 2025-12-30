@@ -1,30 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>CBT Test</title>
+  <title>PDF to CBT</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
 
-<h2>CBT Mode</h2>
+<h2>Upload Question PDF</h2>
 
-<div>
-  Time Left: <span id="time">60:00</span>
-</div>
+<input type="file" id="pdfFile" accept="application/pdf">
+<button onclick="loadPDF()">Convert to Test</button>
 
 <hr>
 
-<div id="question">
-  Question will appear here
-</div>
-
-<br>
+<h3 id="qno"></h3>
+<div id="question"></div>
 
 <button onclick="prevQ()">Previous</button>
 <button onclick="nextQ()">Next</button>
 
-<br><br>
-<button onclick="submitTest()">Submit Test</button>
+<script>
+let questions = [];
+let current = 0;
 
-<script src="js/test.js"></script>
+async function loadPDF(){
+  const file = document.getElementById("pdfFile").files[0];
+  if(!file){ alert("PDF select karo"); return; }
+
+  const reader = new FileReader();
+  reader.onload = async function(){
+    const typedarray = new Uint8Array(this.result);
+    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+
+    let fullText = "";
+    for(let i=1;i<=pdf.numPages;i++){
+      const page = await pdf.getPage(i);
+      const text = await page.getTextContent();
+      text.items.forEach(item => {
+        fullText += item.str + " ";
+      });
+    }
+
+    extractQuestions(fullText);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function extractQuestions(text){
+  // Basic pattern: 1. , 2) , Q1.
+  questions = text.split(/\n|\d+[\.\)]\s/).filter(q=>q.length>20);
+  current = 0;
+  showQ();
+}
+
+function showQ(){
+  if(questions.length===0) return;
+  document.getElementById("qno").innerText = "Q" + (current+1);
+  document.getElementById("question").innerText = questions[current];
+}
+
+function nextQ(){
+  if(current < questions.length-1){ current++; showQ(); }
+}
+function prevQ(){
+  if(current > 0){ current--; showQ(); }
+}
+</script>
+
 </body>
 </html>
